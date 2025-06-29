@@ -1,4 +1,3 @@
-import React from 'react';
 import MoodPage from '../Page/MoodPage/MoodPage';
 
 const Home = () => {

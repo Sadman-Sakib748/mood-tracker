@@ -27,7 +27,7 @@ export const updateMood = async (id, updates) => {
 };
 
 export const deleteMood = async (id) => {
-  const res = await fetch(`${API_BASE_URL}/moods/${id}`, {
+  const res = await fetch(`${API_BASE_URL}/api/moods/${id}`, {
     method: "DELETE",
   });
   if (!res.ok) throw new Error("Failed to delete mood");

@@ -1,24 +1,31 @@
 import { useState, useEffect, useCallback } from "react";
 import { format, subDays, isSameDay, isAfter } from "date-fns";
-import * as api from "../API/Api";
+import * as api from "../Api/Api";
 import Dashboard from "../Dashboard/Dashboard";
 import MoodHistory from "../MoodHistory/MoodHistory";
-import {  toast } from "react-hot-toast";
+import PostMoodForm from "../PostMoodForm/PostMoodForm";
+import { toast } from "react-hot-toast";
 import DebugPanel from "../DebugPanel/DebugPanel";
 import TestPanel from "../TestPanel/TestPanel";
-import { Link } from "react-router"; // or 'react-router-dom' if using react-router-dom
-
-const user = {
-  id: "01703174167",
-  name: "Sadman Sakib",
-};
+import { Link } from "react-router"; 
+import AuthForm from "../../Authentication/AuthForm/AuthForm";
+import Update from "../Update/Update";
+import LoadingSpinner from "../../LoadingSpinner/LoadingSpinner";
 
 const MoodPage = () => {
+  const [user, setUser] = useState(null);
   const [moods, setMoods] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [editingMood, setEditingMood] = useState(null); 
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  useEffect(() => {
+    const storedUser = localStorage.getItem("mood-tracker-loggedin-user");
+    if (storedUser) setUser(JSON.parse(storedUser));
+  }, []);
+
   const fetchMoods = useCallback(async () => {
+    if (!user) return;
     try {
       setLoading(true);
       const data = await api.fetchMoods(user.id);
@@ -29,61 +36,51 @@ const MoodPage = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     fetchMoods();
   }, [fetchMoods]);
 
-  const today = format(new Date(), "yyyy-MM-dd");
-  const todayMood = moods.find((m) => m.date === today && !m.deleted);
-  const weeklyMoods = moods.filter(
-    (m) => !m.deleted && isAfter(new Date(m.date), subDays(new Date(), 7))
-  );
-  const monthMood = calculateMonthMood(moods);
-  const currentStreak = calculateCurrentStreak(moods);
-
-  const handleDeleteMood = async (id) => {
+  const handleDeleteMood = async (_id) => {
     try {
-      await api.deleteMood(id);
+      const res = await fetch(`http://localhost:5000/api/moods/${_id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("Failed to delete mood");
       toast.success("Mood deleted!");
       await fetchMoods();
-    } catch (err) {
-      toast.error("Failed to delete mood.");
+    } catch (error) {
+      toast.error(error.message || "Failed to delete mood");
     }
   };
 
   const handleRestoreMood = async (id) => {
     try {
-      await api.restoreMood(id);
+      const res = await fetch(`http://localhost:5000/api/moods/${id}/restore`, {
+        method: "PATCH",
+      });
+      if (!res.ok) throw new Error("Failed to restore mood");
       toast.success("Mood restored!");
       await fetchMoods();
-    } catch (err) {
-      toast.error("Failed to restore mood.");
+    } catch (error) {
+      toast.error(error.message || "Failed to restore mood");
     }
   };
 
-  function calculateMonthMood(moods) {
+  const calculateMonthMood = (moods) => {
     const last30Days = subDays(new Date(), 30);
-    const recentMoods = moods.filter(
-      (m) => !m.deleted && new Date(m.date) >= last30Days
-    );
-
+    const recentMoods = moods.filter((m) => !m.deleted && new Date(m.date) >= last30Days);
     const moodCounts = recentMoods.reduce((acc, mood) => {
       acc[mood.mood] = (acc[mood.mood] || 0) + 1;
       return acc;
     }, {});
-
     return Object.entries(moodCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || "No data";
-  }
+  };
 
-  function calculateCurrentStreak(moods) {
-    const sortedMoods = moods
-      .filter((m) => !m.deleted)
-      .sort((a, b) => new Date(b.date) - new Date(a.date));
-
-    if (sortedMoods.length === 0) return 0;
-
+  const calculateCurrentStreak = (moods) => {
+    const sortedMoods = moods.filter((m) => !m.deleted).sort((a, b) => new Date(b.date) - new Date(a.date));
+    if (!sortedMoods.length) return 0;
     let streak = 0;
     let currentDate = new Date();
 
@@ -96,31 +93,63 @@ const MoodPage = () => {
       if (isSameDay(new Date(sortedMoods[i].date), currentDate)) {
         streak++;
         currentDate = subDays(currentDate, 1);
-      } else {
-        break;
-      }
+      } else break;
     }
 
     return streak;
+  };
+
+  const today = format(new Date(), "yyyy-MM-dd");
+  const todayMood = moods.find((m) => m.date === today && !m.deleted);
+  const weeklyMoods = moods.filter((m) => !m.deleted && isAfter(new Date(m.date), subDays(new Date(), 7)));
+  const monthMood = calculateMonthMood(moods);
+  const currentStreak = calculateCurrentStreak(moods);
+
+  if (!user) {
+    return (
+      <AuthForm
+        onLogin={(user) => {
+          localStorage.setItem("mood-tracker-loggedin-user", JSON.stringify(user));
+          setUser(user);
+        }}
+      />
+    );
   }
 
-  if (loading) return <div className="p-8 text-center">Loading...</div>;
-  if (error) return <div className="p-8 text-center text-red-500">{error}</div>;
+  if (loading) return <div className="p-8 text-center text-indigo-600"><LoadingSpinner /></div>;
+  if (error) return <div className="p-8 text-center text-red-600">{error}</div>;
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8">
       <div className="max-w-6xl mx-auto space-y-8">
-        <header className="flex justify-between items-center">
+        <header className="flex justify-between items-center gap-4 flex-wrap">
           <h1 className="text-3xl font-bold text-indigo-700">Mood Tracker</h1>
-          <Link to={`/chart`}>
+
+          <div className="flex gap-2">
             <button
-              onClick={() => toast("Navigating to Dashboard...")}
-              className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md shadow hover:bg-indigo-700"
+              onClick={() => {
+                localStorage.removeItem("mood-tracker-loggedin-user");
+                setUser(null);
+              }}
+              className="px-4 py-2 text-sm font-medium text-white bg-red-500 rounded-md hover:bg-red-600"
             >
-              Dashboard
+              Logout
             </button>
-          </Link>
+          </div>
         </header>
+
+        <PostMoodForm userId={user.id} onMoodAdded={fetchMoods} />
+
+        {editingMood && (
+          <Update
+            editingMood={editingMood}
+            onUpdateSuccess={() => {
+              setEditingMood(null);
+              fetchMoods();
+            }}
+            onCancel={() => setEditingMood(null)}
+          />
+        )}
 
         <Dashboard
           moods={moods}
@@ -132,26 +161,14 @@ const MoodPage = () => {
 
         <MoodHistory
           moods={moods}
-          onUpdate={() => {}}
           onDelete={handleDeleteMood}
           onRestore={handleRestoreMood}
+          onEdit={(mood) => setEditingMood(mood)} 
         />
       </div>
 
-      {/* DebugPanel will clear mood state via setMoods */}
-      <DebugPanel
-        moods={moods}
-        user={user}
-        onClear={(cleared) => setMoods(cleared)}
-      />
-
-      {/* TestPanel will refresh moods after add/clear */}
-      <TestPanel
-        moods={moods}
-        user={user}
-        onAdd={fetchMoods}
-        onClear={fetchMoods}
-      />
+      <DebugPanel moods={moods} user={user} onClear={(cleared) => setMoods(cleared)} />
+      <TestPanel moods={moods} user={user} onAdd={fetchMoods} onClear={fetchMoods} />
     </div>
   );
 };
