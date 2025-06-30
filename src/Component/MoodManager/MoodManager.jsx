@@ -1,7 +1,7 @@
 import { useState } from "react";
 import MoodEntry from "./MoodEntry";
 
-const API_BASE = "http://localhost:5000/api";
+const API_BASE = "https://mood-tracker-server.vercel.app/api";
 
 async function updateMood(id, moodData) {
   const res = await fetch(`${API_BASE}/moods/${id}`, {

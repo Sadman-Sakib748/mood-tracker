@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router";
 import { toast } from "react-hot-toast";
 import axios from "axios";
 
-const API_BASE_URL = "http://localhost:5000";
+const API_BASE_URL = "https://mood-tracker-server.vercel.app";
 
 const moodOptions = [
   "Happy", "Sad", "Angry", "Excited", "Anxious", "Tired", "Thoughtful", "Calm",

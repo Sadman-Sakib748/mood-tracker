@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
 
-const API_BASE = "http://localhost:5000/api";
+const API_BASE = "https://mood-tracker-server.vercel.app/api";
 
 const TestPanel = ({ moods = [], user, onAdd, onClear }) => {
   const [showTest, setShowTest] = useState(false);

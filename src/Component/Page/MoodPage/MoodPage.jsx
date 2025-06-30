@@ -44,7 +44,7 @@ const MoodPage = () => {
 
   const handleDeleteMood = async (_id) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/moods/${_id}`, {
+      const res = await fetch(`https://mood-tracker-server.vercel.app/api/moods/${_id}`, {
         method: "DELETE",
       });
       if (!res.ok) throw new Error("Failed to delete mood");
@@ -57,7 +57,7 @@ const MoodPage = () => {
 
   const handleRestoreMood = async (id) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/moods/${id}/restore`, {
+      const res = await fetch(`https://mood-tracker-server.vercel.app/api/moods/${id}/restore`, {
         method: "PATCH",
       });
       if (!res.ok) throw new Error("Failed to restore mood");
